@@ -106,12 +106,6 @@ class ConsoleTK:
     def colorint(self, val):
         return self.colorize(str(val), fg = "base3")
 
-    def writeat(self, message, x, y, fg = None, bg = None, bold = None, blink = None):
-        self.moveto(x, y)
-        self.savepos()
-        sys.stdout.write(self.colorize(message, fg, bg, bold, blink))
-        self.restorepos()
-
     def write(self, message, fg = None, bg = None, bold = None, blink = None):
         self.savepos()
         sys.stdout.write(self.colorize(message, fg, bg, bold, blink))
