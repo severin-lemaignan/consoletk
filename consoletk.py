@@ -7,29 +7,39 @@ import termios, sys
 class ConsoleTK:
 
     # color names to indices
-    color_map = {
-        'black': 0,
-        'red': 1,
-        'green': 2,
-        'yellow': 3,
-        'blue': 4,
-        'magenta': 5,
-        'cyan': 6,
-        'white': 7,
-    }
+    solarized_scheme = {
+        "base03":    234, # #002b36 
+        "base02":    235, # #073642 
+        "base01":    240, # #586e75 
+        "base00":    241, # #657b83 
+        "base0":     244, # #839496 
+        "base1":     245, # #93a1a1 
+        "base2":     254, # #eee8d5 
+        "base3":     230, # #fdf6e3 
+        "yellow":    136, # #b58900 
+        "orange":    166, # #cb4b16 
+        "red":       160, # #dc322f 
+        "magenta":   125, # #d33682 
+        "violet":     61, # #6c71c4 
+        "blue":       33, # #268bd2 
+        "cyan":       37, # #2aa198 
+        "green":      64, # #859900 
+        }
 
-    palette = [ ('red', False),
-                ('red', True),
-                ('yellow', False),
-                ('yellow', True),
-                ('green', False),
-                ('green', True)]
 
+    solarized_palette = [ ('red', False),
+                          ('orange', False),
+                          ('yellow', False),
+                          ('green', False)]
     csi = '\x1b['
     reset = '\x1b[0m'
  
     def __init__(self, height = 10):
-        self.fg = None
+
+        self.color_map = self.solarized_scheme
+        self.palette = self.solarized_palette
+
+        self.fg = "base2"
         self.bg = None
         self.bold = False
         self.blink = False
@@ -78,9 +88,11 @@ class ConsoleTK:
 
         params = []
         if bg in self.color_map:
-            params.append(str(self.color_map[bg] + 40))
+            params.append("48;5;%s" % self.color_map[bg])
+
         if fg in self.color_map:
-            params.append(str(self.color_map[fg] + 30))
+            params.append("38;5;%s" % self.color_map[fg])
+
         if bold:
             params.append('1')
         elif blink:
@@ -90,6 +102,9 @@ class ConsoleTK:
                                 'm', message, self.reset))
         
         return message
+
+    def colorint(self, val):
+        return self.colorize(str(val), fg = "base3")
 
     def writeat(self, message, x, y, fg = None, bg = None, bold = None, blink = None):
         self.moveto(x, y)
@@ -105,34 +120,40 @@ class ConsoleTK:
     def bar(self, 
             percent, maxlength = 30, 
             msg = "", showvalue = True, label = None, 
-            color = None,
-            autocolor = None, highishot = False):
+            color = "base1",
+            autocolor = False, highishot = False):
         """
         With auto-color, the color depends on the percentage value.
         If 'highishot' is True, the higher the percentage, the closer to red,
         else, the higher the percentage, the closer to green.
         """
-        msg = msg if msg else "{0}%".format(percent)
+        msg = msg if msg else "{0}%".format(self.colorint(percent))
 
         self.savepos()
+
+        if label:
+            label = self.colorize(label, fg = "base0")
+
         sys.stdout.write(("%s |"%label if label else "|") + \
                           self.csi +"%sC"%(maxlength-2) + "|"+ \
                          ((" " + msg) if showvalue else ""))
         self.restorepos()
 
         bold = False
-        if not color and autocolor:
+        if autocolor:
             color, bold = self.gethotcolor(percent, reverse = highishot)
 
         barlen = int(percent / 100. * (maxlength-2))
         bar = self.colorize("█" * barlen + " " * (maxlength-2-barlen), fg = color, bold = bold)
-        #bar = self.colorize("-" * int(percent / 100. * (maxlength-2)), fg = color)
         sys.stdout.write(("%s |"%label if label else "|") + bar)
         self.restorepos()
 
     def boolean(self, state, label):
         self.savepos()
+        label = self.colorize(label, fg = "base0")
+
         msg = (self.colorize("☑", fg = "green") if state else self.colorize("☒", fg = "red")) + " " + label
+
         sys.stdout.write(msg)
         self.restorepos()
 
@@ -140,14 +161,14 @@ class ConsoleTK:
                     value, maxvalue, 
                     unit, label = "", 
                     maxlength = 30, 
-                    color = None,
-                    autocolor = None, highishot = False):
+                    color = "base1",
+                    autocolor = False, highishot = False):
 
         value = max(0, min(value, maxvalue))
 
         self.bar(value * 100. / maxvalue, 
                  maxlength, 
-                 "%s%s" % (value, unit), 
+                 "%s%s" % (self.colorint(value), unit), 
                  label = label,
                  showvalue = True, 
                  color = color,
@@ -160,6 +181,7 @@ class ConsoleTK:
         cell = "██"
 
         if label:
+            label = self.colorize(label, fg = "base0")
             self.write(label)
             self.relmoveto(0,1)
 
