@@ -103,10 +103,13 @@ class ConsoleTK:
         
         return message
 
-    def colorint(self, val):
-        return self.colorize(str(val), fg = "base3")
+    def colorint(self, val, warning = False):
+        if warning:
+            return self.colorize(str(val), fg = "orange")
+        else:
+            return self.colorize(str(val), fg = "base3")
 
-    def write(self, message, fg = None, bg = None, bold = None, blink = None):
+    def label(self, message, fg = None, bg = None, bold = None, blink = None):
         self.savepos()
         sys.stdout.write(self.colorize(message, fg, bg, bold, blink))
         self.restorepos()
@@ -158,11 +161,13 @@ class ConsoleTK:
                     color = "base1",
                     autocolor = False, highishot = False):
 
-        value = max(0, min(value, maxvalue))
+        msg = "%s%s" % (self.colorint(value, warning = (value > maxvalue)), unit)
 
-        self.bar(value * 100. / maxvalue, 
+        clampedvalue = max(0, min(value, maxvalue))
+
+        self.bar(clampedvalue * 100. / maxvalue, 
                  maxlength, 
-                 "%s%s" % (self.colorint(value), unit), 
+                 msg, 
                  label = label,
                  showvalue = True, 
                  color = color,
@@ -176,7 +181,7 @@ class ConsoleTK:
 
         if label:
             label = self.colorize(label, fg = "base0")
-            self.write(label)
+            self.label(label)
             self.relmoveto(0,1)
 
         orig_x = self.cur_x
@@ -185,7 +190,7 @@ class ConsoleTK:
         for i, col in enumerate(values):
             for j, val in enumerate(col):
                 self.moveto(orig_x + i * 2, orig_y + j)
-                self.write(cell, fg = ("green" if val else "red"))
+                self.label(cell, fg = ("green" if val else "red"))
 
         self.moveto(orig_x, orig_y - (1 if label else 0))
 
