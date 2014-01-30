@@ -61,7 +61,7 @@ class ConsoleTK:
         sys.stdout.write(self.csi + "%sF"%height)
         self.cur_x = 0
         self.cur_y = 0
-        self.clear()
+        self.clearzone()
 
         # add margin
         self.relmoveto(1,1)
@@ -69,7 +69,7 @@ class ConsoleTK:
         self.cur_y = 0
  
 
-    def clear(self):
+    def clearzone(self):
         self.moveto(0,0)
         sys.stdout.write(self.csi + "J")
 
@@ -113,6 +113,24 @@ class ConsoleTK:
         self.savepos()
         sys.stdout.write(self.colorize(message, fg, bg, bold, blink))
         self.restorepos()
+
+    def vseparator(self, height = 1):
+        self.savepos()
+
+        for i in range(height):
+            sys.stdout.write("│" + self.csi +"1B" + self.csi + "1D")
+
+        self.restorepos()
+
+    def clear(self, width, height):
+        self.savepos()
+
+        for i in range(height):
+            sys.stdout.write(" " * width + self.csi +"1B" + self.csi + "%sD" % width)
+
+        self.restorepos()
+
+
 
     def bar(self, 
             percent, maxlength = 30, 
@@ -235,7 +253,7 @@ class ConsoleTK:
         self.cur_x = 0
         self.cur_y = 0
 
-        self.clear()
+        self.clearzone()
 
         sys.stdout.write(self.csi + "?25h") # show the cursor
 
