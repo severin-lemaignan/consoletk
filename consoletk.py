@@ -313,10 +313,41 @@ class ConsoleTK:
 
 if __name__ == "__main__":
 
-    with ConsoleTK() as console:
+    import time
 
-        key = ""
-        while ord(key) != 27: # esc
+    with ConsoleTK(height=10) as console:
+
+        key = None 
+        lastkey = None
+        i = 0
+        while not key or ord(key) != 27: # esc
+
+            i+=1
+
             key = console.get_keypress()
+
             if key:
-                print("%s (code: %s)" % (key, ord(key)))
+                lastkey = key
+
+            console.boolean(True, "I'm true")
+            console.relmoveto(10,0)
+            console.boolean(False, "I'm false")
+
+            console.moveto(22,0)
+            console.absolutebar(i % 10, 10, "kg", label = "Scale", maxlength = 20, autocolor = True, highishot = True)
+
+            console.moveto(0,2)
+            console.absolutebar((i % 10) / 10., 1, "rad.s^-1", label = " Youpla")
+
+            console.moveto(78,2)
+            console.vseparator(3)
+
+            console.moveto(80,2)
+            console.label("Press a key... (esc to quit)")
+            console.moveto(80,3)
+
+            if lastkey:
+                console.label("Keypress: %s (code: %s)" % (lastkey, ord(lastkey)))
+
+            console.moveto(0,0)
+            time.sleep(0.1)
