@@ -306,8 +306,8 @@ class ConsoleTK:
                     return self.ARROW_RIGHT
                 elif ansicode == "D":
                     return self.ARROW_LEFT
-
-                assert(False)
+                else: # return ESC
+                    return key
 
             return key
 
@@ -315,7 +315,8 @@ if __name__ == "__main__":
 
     with ConsoleTK() as console:
 
-        while True:
+        key = ""
+        while ord(key) != 27: # esc
             key = console.get_keypress()
             if key:
                 print("%s (code: %s)" % (key, ord(key)))
