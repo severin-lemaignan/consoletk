@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import sys
+import sys, os
 import termios, sys
 
 class ConsoleTK:
@@ -36,6 +36,9 @@ class ConsoleTK:
  
     def __init__(self, height = 10):
 
+        # unbuffered output
+        self.out = os.fdopen(sys.stdout.fileno(), 'w', 0)
+
         self.color_map = self.solarized_scheme
         self.palette = self.solarized_palette
 
@@ -56,9 +59,9 @@ class ConsoleTK:
         return isatty and isatty()
 
     def initzone(self, height = 10):
-        sys.stdout.write("\n" * height)
-        sys.stdout.write(self.csi + "?25l") # hide the cursor
-        sys.stdout.write(self.csi + "%sF"%height)
+        self.out.write("\n" * height)
+        self.out.write(self.csi + "?25l") # hide the cursor
+        self.out.write(self.csi + "%sF"%height)
         self.cur_x = 0
         self.cur_y = 0
         self.clearzone()
@@ -71,7 +74,7 @@ class ConsoleTK:
 
     def clearzone(self):
         self.moveto(0,0)
-        sys.stdout.write(self.csi + "J")
+        self.out.write(self.csi + "J")
 
     def gethotcolor(self, percent, reverse = False):
         percent = (100 - percent) if reverse else percent
@@ -111,14 +114,14 @@ class ConsoleTK:
 
     def label(self, message, fg = None, bg = None, bold = None, blink = None):
         self.savepos()
-        sys.stdout.write(self.colorize(message, fg, bg, bold, blink))
+        self.out.write(self.colorize(message, fg, bg, bold, blink))
         self.restorepos()
 
     def vseparator(self, height = 1):
         self.savepos()
 
         for i in range(height):
-            sys.stdout.write("│" + self.csi +"1B" + self.csi + "1D")
+            self.out.write("│" + self.csi +"1B" + self.csi + "1D")
 
         self.restorepos()
 
@@ -126,7 +129,7 @@ class ConsoleTK:
         self.savepos()
 
         for i in range(height):
-            sys.stdout.write(" " * width + self.csi +"1B" + self.csi + "%sD" % width)
+            self.out.write(" " * width + self.csi +"1B" + self.csi + "%sD" % width)
 
         self.restorepos()
 
@@ -149,7 +152,7 @@ class ConsoleTK:
         if label:
             label = self.colorize(label, fg = "base0")
 
-        sys.stdout.write(("%s |"%label if label else "|") + \
+        self.out.write(("%s |"%label if label else "|") + \
                           self.csi +"%sC"%(maxlength-2) + "|"+ \
                          ((" " + msg) if showvalue else ""))
         self.restorepos()
@@ -160,7 +163,7 @@ class ConsoleTK:
 
         barlen = int(percent / 100. * (maxlength-2))
         bar = self.colorize("█" * barlen + " " * (maxlength-2-barlen), fg = color, bold = bold)
-        sys.stdout.write(("%s |"%label if label else "|") + bar)
+        self.out.write(("%s |"%label if label else "|") + bar)
         self.restorepos()
 
     def boolean(self, state, label):
@@ -169,7 +172,7 @@ class ConsoleTK:
 
         msg = (self.colorize("☑", fg = "green") if state else self.colorize("☒", fg = "red")) + " " + label
 
-        sys.stdout.write(msg)
+        self.out.write(msg)
         self.restorepos()
 
     def absolutebar(self, 
@@ -213,10 +216,10 @@ class ConsoleTK:
         self.moveto(orig_x, orig_y - (1 if label else 0))
 
     def savepos(self):
-        sys.stdout.write(self.csi + "s")
+        self.out.write(self.csi + "s")
 
     def restorepos(self):
-        sys.stdout.write(self.csi + "u")
+        self.out.write(self.csi + "u")
 
     def moveto(self, x = 0, y = 0):
         if x < 0:
@@ -233,13 +236,13 @@ class ConsoleTK:
         self.cur_x += x
         self.cur_y += y
         if x < 0:
-            sys.stdout.write(self.csi + "%sD" % -x)
+            self.out.write(self.csi + "%sD" % -x)
         elif x > 0:
-            sys.stdout.write(self.csi + "%sC" % x)
+            self.out.write(self.csi + "%sC" % x)
         if y < 0:
-            sys.stdout.write(self.csi + "%sA" % -y)
+            self.out.write(self.csi + "%sA" % -y)
         elif y > 0:
-            sys.stdout.write(self.csi + "%sB" % y)
+            self.out.write(self.csi + "%sB" % y)
 
     def __enter__(self):
         self._configure_keyboard()
@@ -255,7 +258,7 @@ class ConsoleTK:
 
         self.clearzone()
 
-        sys.stdout.write(self.csi + "?25h") # show the cursor
+        self.out.write(self.csi + "?25h") # show the cursor
 
     def _configure_keyboard(self):
         """
