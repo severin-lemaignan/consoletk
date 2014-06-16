@@ -250,6 +250,9 @@ class ConsoleTK:
         return self
 
     def __exit__(self, type, value, traceback):
+        self.close()
+
+    def close(self):
         self._restore_keyboard()
         # remove margin
         self.moveto(0,0)
