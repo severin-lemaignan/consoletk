@@ -108,9 +108,9 @@ class ConsoleTK:
 
     def colorint(self, val, warning = False):
         if warning:
-            return self.colorize(str(val), fg = "orange")
+            return self.colorize("%.2f" % val, fg = "orange")
         else:
-            return self.colorize(str(val), fg = "base3")
+            return self.colorize("%.2f" % val, fg = "base3")
 
     def label(self, message, fg = None, bg = None, bold = None, blink = None):
         self.savepos()
