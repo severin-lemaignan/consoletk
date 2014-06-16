@@ -180,13 +180,14 @@ class ConsoleTK:
                     unit, label = "", 
                     maxlength = 30, 
                     color = "base1",
-                    autocolor = False, highishot = False):
+                    autocolor = False, highishot = False,
+                    minvalue = 0):
 
-        msg = "%s%s" % (self.colorint(value, warning = (value > maxvalue)), unit)
+        msg = "%s%s" % (self.colorint(value, warning = (value > maxvalue) or (value < minvalue)), unit)
 
-        clampedvalue = max(0, min(value, maxvalue))
+        clampedvalue = max(minvalue, min(value, maxvalue))
 
-        self.bar(clampedvalue * 100. / maxvalue, 
+        self.bar((clampedvalue - minvalue) * 100. / (maxvalue - minvalue), 
                  maxlength, 
                  msg, 
                  label = label,
