@@ -280,8 +280,9 @@ class ConsoleTK:
         """
         restore previous keyboard settings
         """
-        fd = sys.stdin.fileno()
-        termios.tcsetattr(fd, termios.TCSADRAIN, self.original_kbd_settings)
+        if hasattr(self, "original_kbd_settings"):
+            fd = sys.stdin.fileno()
+            termios.tcsetattr(fd, termios.TCSADRAIN, self.original_kbd_settings)
 
     ARROW_UP = "up"
     ARROW_DOWN = "down"
