@@ -14,6 +14,15 @@ arrow keys) that enables user interactions.
 
 Note that ConsoleTK requires a terminal emulator that supports ANSI sequences and 256 colours.
 
+Installation
+------------
+
+Easy enough:
+
+```
+$ pip install consoletk
+```
+
 Example
 -------
 
