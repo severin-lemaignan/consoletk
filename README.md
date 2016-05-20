@@ -145,6 +145,7 @@ Widgets
 
 - Labels: `label(text, fg, bg, bold, blink)`
 - Lines: `vsep(height)`, `hsep(width)`
+- Boxes: `box(width,height)`
 - Tickboxes: `boolean(state,label)`
 - Horizontal progressbars: `bar(...)` and `absolutebar(...)`
 
