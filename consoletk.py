@@ -1,5 +1,89 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+""" ConsoleTK is a simple, stand-alone Python class to draw colorful command-line interfaces.
+Think 'curses for dummies'.
+
+To draw your interface, you first place your cursor with `moveto(x,y)` (or `relmoveto(x,y)` 
+for a relative motion), and you then draw a widget: label, bars, separators, etc.
+
+ConsoleTK also implements *non-blocking polling of the keyboard* (including
+arrow keys) that enables user interactions.
+
+Note that ConsoleTK requires a terminal emulator that supports ANSI sequences and 256 colours.
+
+Initialization
+--------------
+
+Simply create a canvas with:
+
+```python
+import consoletk
+
+with ConsoleTK(height=20) as console:
+    #...
+```
+
+Obviously, change the height to your liking.
+The width of the area is the current width of the terminal. Note that ConsoleTK
+does not perform any form of reflow if you change the geometry of your
+interface.
+
+Note that the cursor is initially at position `(1,1)` (and not `(0,0)`) to leave a small margin.
+You can still move to `(0,0)` with `console.moveto(0,0)`.
+
+Colours
+-------
+
+Many widgets can take as parameter foreground (`fg`) and background (`bg`) colours.
+
+In its current version, ConsoleTK uses a system of colour palettes, and as such,
+colours must be one of:
+
+- `yellow`
+- `orange`
+- `red`  
+- `magenta`
+- `violet`
+- `blue` 
+- `cyan` 
+- `green`
+- `base03` (black)
+- `base02` (almost black)
+- `base01` (darker grey)
+- `base00` (dark grey)
+- `base0` (grey)
+- `base1` (light grey)
+- `base2` (very light)
+- `base3` (white)
+
+Besides, you can also often specify `bold=True` and `blink=True` to enable the
+corresponding effects (effective rendering depends on your terminal).
+
+Motions
+-------
+
+You can move your cursor with `moveto(x,y)` or `relmoveto(x,y)`.
+You can also save and restore a previous position with `savepos()` and `restorepose()`.
+
+Widgets
+-------
+
+- Labels: `label(text, fg, bg, bold, blink)`
+- Lines: `vsep(height)`, `hsep(width)`
+- Tickboxes: `boolean(state,label)`
+- Horizontal progressbars: `bar(...)` and `absolutebar(...)`
+
+Note that *drawing a widget does not move the cursor*: the cursor remains where it was before you
+issued the drawing call.
+
+Others
+------
+
+- `clear()` clears the entire interface.
+- `clear(width, height)` clears a rectangle below the cursor.
+- `get_keypress()` returns the last key pressed (or `ConsoleTK.ARROW_LEFT|RIGHT|UP|DOWN` for the
+arrows).
+"""
 
 import sys, os
 import termios, sys
@@ -48,7 +132,7 @@ class ConsoleTK:
         self.blink = False
 
         self.height = height
-        self.initzone(self.height)
+        self._initzone(self.height)
 
         self.cur_x = 0
         self.cur_y = 0
@@ -58,13 +142,13 @@ class ConsoleTK:
         isatty = getattr(self.stream, 'isatty', None)
         return isatty and isatty()
 
-    def initzone(self, height = 10):
+    def _initzone(self, height = 10):
         self.out.write("\n" * height)
         self.out.write(self.csi + "?25l") # hide the cursor
         self.out.write(self.csi + "%sF"%height)
         self.cur_x = 0
         self.cur_y = 0
-        self.clearzone()
+        self.clear()
 
         # add margin
         self.relmoveto(1,1)
@@ -72,16 +156,12 @@ class ConsoleTK:
         self.cur_y = 0
  
 
-    def clearzone(self):
-        self.moveto(0,0)
-        self.out.write(self.csi + "J")
-
-    def gethotcolor(self, percent, reverse = False):
+    def _gethotcolor(self, percent, reverse = False):
         percent = (100 - percent) if reverse else percent
         idx = min(int(len(self.palette) * percent / 100.), len(self.palette)-1)
         return self.palette[idx]
 
-    def colorize(self, message, fg = None, bg = None, bold = None, blink = None):
+    def _colorize(self, message, fg = None, bg = None, bold = None, blink = None):
 
         # arguments overrides instance defaults
         fg = fg or self.fg
@@ -106,51 +186,125 @@ class ConsoleTK:
         
         return message
 
-    def colorint(self, val, warning = False):
+    def _colorint(self, val, warning = False):
         if warning:
-            return self.colorize("%.2f" % val, fg = "orange")
+            return self._colorize("%.2f" % val, fg = "orange")
         else:
-            return self.colorize("%.2f" % val, fg = "base3")
+            return self._colorize("%.2f" % val, fg = "base3")
 
     def label(self, message, fg = None, bg = None, bold = None, blink = None):
+        """ Print a text at the current position.
+        """
         self.savepos()
-        self.out.write(self.colorize(message, fg, bg, bold, blink))
+        self.out.write(self._colorize(message, fg, bg, bold, blink))
         self.restorepos()
 
-    def vseparator(self, height = 1):
+    def hsep(self, width = 1, fg=None, bg=None, double=False):
+        """ Print a horizontal separator starting at the current cursor position
+
+        If double=True, prints a double line
+        """
+
+        self.savepos()
+
+        self.out.write(self._colorize(("═" if double else "─") * width, fg, bg))
+
+        self.restorepos()
+
+
+    def vsep(self, height = 1, double=False):
+        """ Print a vertical separator below the current cursor position,
+        starting at the cursor position.
+        """
+
         self.savepos()
 
         for i in range(height):
-            self.out.write("│" + self.csi +"1B" + self.csi + "1D")
+            if double:
+                self.out.write("║" + self.csi +"1B" + self.csi + "1D")
+            else:
+                self.out.write("│" + self.csi +"1B" + self.csi + "1D")
 
         self.restorepos()
 
-    def clear(self, width, height):
+    def box(self, width, height, border_fg=None, border_bg=None, bg=None, double=False):
+
         self.savepos()
 
-        for i in range(height):
-            self.out.write(" " * width + self.csi +"1B" + self.csi + "%sD" % width)
+        corner1 = self._colorize("╔" if double else "┌", border_fg, border_bg)
+        corner2 = self._colorize("╗" if double else "┐", border_fg, border_bg)
+        corner3 = self._colorize("╚" if double else "└", border_fg, border_bg)
+        corner4 = self._colorize("╝" if double else "┘", border_fg, border_bg)
+        
+        vbar = self._colorize("║" if double else "│", border_fg, border_bg)
+        background = self._colorize(" " * (width-2),bg=bg)
+        content_line = vbar + background + vbar
+
+        self.out.write(corner1 + \
+                    self._colorize(("═" if double else "─") * (width-2), border_fg, border_bg) + \
+                    corner2 + \
+                    self.csi +"1B" + self.csi + "%sD"%width)
+        for i in range(height-2):
+            self.out.write(content_line + self.csi +"1B" + self.csi + "%sD"%width)
+
+        self.out.write(corner3 + \
+                    self._colorize(("═" if double else "─") * (width-2), border_fg, border_bg) + \
+                    corner4)
 
         self.restorepos()
 
+    def clear(self, width=None, height=None):
+        """Clears a (widthxheight) rectangle below the cursor, or the whole interface zone if
+        no parameter is provided.
+        """
+        if width is None and height is None:
+            self.moveto(0,0)
+            self.out.write(self.csi + "J")
 
+        else:
+
+            self.savepos()
+
+            for i in range(height):
+                self.out.write(" " * width + self.csi +"1B" + self.csi + "%sD" % width)
+
+            self.restorepos()
+
+
+    def boolean(self, state, label=None):
+        """Displays a green ticked (if `state=True`) or red crossed (if `state=False`) tickbox at
+        cursor position, follows by the given label (if any).
+        """
+        self.savepos()
+        label = self._colorize(label, fg = "base0")
+
+        msg = (self._colorize("☑", fg = "green") if state else self._colorize("☒", fg = "red")) + " " + label
+
+        self.out.write(msg)
+        self.restorepos()
 
     def bar(self, 
             percent, maxlength = 30, 
             msg = "", showvalue = True, label = None, 
             color = "base1",
             autocolor = False, highishot = False):
+        """Displays an horizontal progressbar based on a percentage.
+
+        :param percent: the percentage of the maxlength
+        :param maxlength: length of the bar (default: 30)
+        :param showvalue: display the percentage in numerical form
+        :param label: the label of the bar
+        :param color: color of the bar (not used if autocolor is True)
+        :param autocolor: if True, the color depends on the percentage value
+        :param highishot: if True, the higher the percentage, the closer to red,
+                          else, the higher the percentage, the closer to green.
         """
-        With auto-color, the color depends on the percentage value.
-        If 'highishot' is True, the higher the percentage, the closer to red,
-        else, the higher the percentage, the closer to green.
-        """
-        msg = msg if msg else "{0}%".format(self.colorint(percent))
+        msg = msg if msg else "{0}%".format(self._colorint(percent))
 
         self.savepos()
 
         if label:
-            label = self.colorize(label, fg = "base0")
+            label = self._colorize(label, fg = "base0")
 
         self.out.write(("%s |"%label if label else "|") + \
                           self.csi +"%sC"%(maxlength-2) + "|"+ \
@@ -159,20 +313,11 @@ class ConsoleTK:
 
         bold = False
         if autocolor:
-            color, bold = self.gethotcolor(percent, reverse = highishot)
+            color, bold = self._gethotcolor(percent, reverse = highishot)
 
         barlen = int(percent / 100. * (maxlength-2))
-        bar = self.colorize("█" * barlen + " " * (maxlength-2-barlen), fg = color, bold = bold)
+        bar = self._colorize("█" * barlen + " " * (maxlength-2-barlen), fg = color, bold = bold)
         self.out.write(("%s |"%label if label else "|") + bar)
-        self.restorepos()
-
-    def boolean(self, state, label):
-        self.savepos()
-        label = self.colorize(label, fg = "base0")
-
-        msg = (self.colorize("☑", fg = "green") if state else self.colorize("☒", fg = "red")) + " " + label
-
-        self.out.write(msg)
         self.restorepos()
 
     def absolutebar(self, 
@@ -182,8 +327,17 @@ class ConsoleTK:
                     color = "base1",
                     autocolor = False, highishot = False,
                     minvalue = 0):
+        """Displays an horizontal progressbar based on an absolute value.
 
-        msg = "%s%s" % (self.colorint(value, warning = (value > maxvalue) or (value < minvalue)), unit)
+        :param value: the value to be represented
+        :param maxvalue: upperbound of the admissible values
+        :param minvalue: lowerbound of the admissible values
+        :param unit: the unit of the data (display next to the numerical value)
+
+        See ConsoleTK.bar for the other parameters.
+        """
+
+        msg = "%s%s" % (self._colorint(value, warning = (value > maxvalue) or (value < minvalue)), unit)
 
         clampedvalue = max(minvalue, min(value, maxvalue))
 
@@ -202,7 +356,7 @@ class ConsoleTK:
         cell = "██"
 
         if label:
-            label = self.colorize(label, fg = "base0")
+            label = self._colorize(label, fg = "base0")
             self.label(label)
             self.relmoveto(0,1)
 
@@ -217,22 +371,29 @@ class ConsoleTK:
         self.moveto(orig_x, orig_y - (1 if label else 0))
 
     def savepos(self):
+        """Saves the current cursor position for later restoration with restorepos()
+        """
         self.out.write(self.csi + "s")
 
     def restorepos(self):
+        """Restores the last cursor position saved with savepos().
+
+        Does nothing if no position has been saved sofar.
+        """
         self.out.write(self.csi + "u")
 
     def moveto(self, x = 0, y = 0):
+        """Moves the cursor to the given absolute position within the UI area.
+        """
         if x < 0:
-            print("moveto x out of bounds")
-            sys.exit(1)
+            raise ValueError("moveto x out of bounds")
         if y < 0 or y > self.height:
-            print("moveto y out of bounds")
+            raise ValueError("moveto y out of bounds")
 
         self.relmoveto(x-self.cur_x, y-self.cur_y)
 
     def relmoveto(self, x = 0, y = 0):
-        """ Relative placement of the cursor
+        """Moves the cursor relative to its current position.
         """
         self.cur_x += x
         self.cur_y += y
@@ -260,7 +421,7 @@ class ConsoleTK:
         self.cur_x = 0
         self.cur_y = 0
 
-        self.clearzone()
+        self.clear()
 
         self.out.write(self.csi + "?25h") # show the cursor
 
@@ -345,7 +506,7 @@ if __name__ == "__main__":
             console.absolutebar((i % 10) / 10., 1, "rad.s^-1", label = " Youpla")
 
             console.moveto(78,2)
-            console.vseparator(3)
+            console.vsep(3)
 
             console.moveto(80,2)
             console.label("Press a key... (esc to quit)")
